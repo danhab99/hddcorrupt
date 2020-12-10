@@ -1,29 +1,34 @@
 from random import randint, sample, choice
+from uuid import uuid4
 import os
+import sys
+import json
 
-def chunks(lst, n):
-  """Yield successive n-sized chunks from lst."""
-  for i in range(0, len(lst), n):
-    yield lst[i:i + n]
+REPEAT_FILES = 20
 
 class Disk:
   def __init__(self, fragsize, fragdev):
     self._fragsize = fragsize
     self._fragdev = fragdev
-    self.manifest = dict()
-    self._memory = list()
+    self.manifest = list()
+    self.memory = list()
     self._staging = list()
     self._idcount = 0
 
-  def add_file(self, path, bits, filler):
-    c = list(chunks(bits, self._fragsize))
-    c.reverse()
+  def add_file(self, path, filler):
+    filesize = os.path.getsize(path)
+    chunks = [ i * self._fragsize for i in range(filesize // self._fragsize) ]
+    chunks = [ (s, e - 1) for s, e in zip(chunks, chunks[1:]) ]
+    chunks = list(chunks)
+    chunks.reverse()
+    
     self._staging.append({
       "id": self._idcount,
       "path": path,
-      "chunks": c,
+      "chunks": chunks,
       "isFiller": filler
     })
+
     self._idcount += 1
     
   def _getStagedChunks(self):
@@ -31,23 +36,25 @@ class Disk:
 
   def flush(self):
     initialChunkCount = float(self._getStagedChunks())
-    while all([len(x["chunks"]) > 0 for x in self._staging]):
+
+    while self._getStagedChunks() > 0:
       file = choice(self._staging)
-      start = len(self._memory)
 
-      for _ in range(min(len(file["chunks"]), randint(1, self._fragdev))):
-        self._memory.extend(file["chunks"].pop())
-
-      end = len(self._memory)
-
-      if file["id"] not in self.manifest.keys():
-        self.manifest[file["id"]] = {
-          "chunks": list(),
-          "deleted": False,
-          "path": file["path"]
-        }
-
-      self.manifest[file["id"]]["chunks"].append((start, end))
+      if len(file["chunks"]) > 0:
+        for _ in range(min(len(file["chunks"]), randint(1, self._fragdev))):
+          self.memory.append({
+            "id": file["id"],
+            "chunk": file["chunks"].pop()
+          })
+      else:
+        self.manifest.append({
+          "id": file["id"],
+          "path": file["path"],
+          "isFiller": file["isFiller"],
+          "deleted": False
+        })
+        self._staging.remove(file)
+      
       yield (initialChunkCount - self._getStagedChunks()) / initialChunkCount
 
     self._staging = list()
