@@ -91,15 +91,13 @@ class Disk:
         item["deleted"] = True
         return
 
-  def getFile(self, path):
-
-
 
 def main():
   print("Starting...")
-  disk = Disk(2**11, 8)
+  original_disk = Disk(2**11, 8)
+  new_disk = Disk(2**11, 12)
 
-  def AddFiles(dir, repeat, filler):
+  def AddFiles(disk, dir, repeat, filler):
     for file in os.listdir(dir):
       print("Adding file " + file)
 
@@ -107,24 +105,18 @@ def main():
         disk.add_file(dir + '/' + file, filler)
         print("Progress {:.2f}%".format(i / REPEAT_FILES), end='\r')
 
-  AddFiles('good_pics', 3, False)
-  AddFiles('filler_data', 7, True)
+  AddFiles(original_disk, 'good_pics', 3, False)
+  AddFiles(original_disk, 'filler_data', 7, True)
+  AddFiles(new_disk, 'filler_data', 10, True)
 
-  def Flush():
-    print("Flushing")
+  print("Flushing")
+  for disk in [original_disk, new_disk]:
     for progress in disk.flush():
       print("Flush progress {:.3f}%".format(progress), end='\r')
     print("\nFlushing done")
 
-  Flush()
-
-  print("Deleting files at random")
-  for deleteFile in sample(disk.manifest, int(len(os.listdir('good_pics')) + len(os.listdir('filler_data')) * 0.7) ):
-    disk.deleteFile(deleteFile["id"])
-  print("Done")
   
-  AddFiles('filler_data', 10, True)
-  Flush()
+  
 
 
 if __name__ == "__main__":
