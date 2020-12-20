@@ -22,9 +22,9 @@ def corrupt(tid):
     with open('good_pics/' + picture_path, 'rb') as picture:
       uid = str(uuid4())
       ext = os.path.splitext(picture_path)[1]
-      chunk_size = randint(5, 30)
+      chunk_size = randint(5, 15)
       corruption_rate = random()
-      skip_rate = randint(0, 50)
+      skip_rate = randint(0, 20)
       description = {
         "original": picture_path,
         "chunk size": file_size // chunk_size,
